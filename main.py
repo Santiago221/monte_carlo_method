@@ -4,49 +4,92 @@ import matplotlib.pyplot as plt
 import numpy  as np
 from tqdm import tqdm
 
-x1_min = 1
-x1_max = 2
-
-x2_min = 3
-x2_max = 4
-
-x3_avg = 3
-x3_sigma = 0.55
-
+## Intevalo de Confiança
 p = 0.9545
-M = 1e7
+## Amostras
+M = 1e5
 
-def func(x1,x2,x3):
-    return ((x1 + x2)**(x3/x1))*np.sin(x2)
+## Barras histograma
+bars = 500
+## Variáveis
+variables = {'Massa':[[1.5,2],['Retangular']],
+             'L':[[2.9,3.3],['Retangular']],
+             'W':[[1,0.2],['Gauss']],
+             'H':[[0.9,1.1],['Triangular']]}
 
-x1_vet = np.zeros(int(M))
-x2_vet = np.zeros(int(M))
-x3_vet = np.zeros(int(M))
-y_vet = np.zeros(int(M))
+def Func_Forma(data):
+    '''
+    Retorna um resultado dependendo da função de forma utilizada para a variável
+    Retangular - algum valor entre o mínimo e o máximo
+    Triangular - algum valor entre o mínimo e o máximo
+    Gaussiana - algum valor a média e o desvio padrão
+    '''
+    if len(data) > 1:
+        if data[1][0] == 'Retangular':
+            value = random.uniform(data[0][0], data[0][1])
+            return value
+        elif data[1][0] == 'Gauss':
+            value = random.gauss(data[0][0], data[0][1])
+            return value
+        elif data[1][0] == 'Triangular':
+            value = random.triangular(data[0][0], data[0][1])
+            return value
+    else:
+        value = data[0]
+        return value
+
+def Robot_Model(variables):
+    '''
+    Define o modelo do Robô
+    Importante retornar apenas as variáveis de interesse para reduzir problemas de alocamneto de memória
+    '''
+
+    M = Func_Forma(variables['Massa'])
+    L = Func_Forma(variables['L'])
+    H = Func_Forma(variables['H'])
+    W  = Func_Forma(variables['W'])
 
 
+
+    Ixr = M * (L**2 + H**2)/12
+    Iyr = M * (L ** 2 + W ** 2) / 12
+    Izr = M * (W ** 2 + H ** 2) / 12
+    return M, L, H, W, Ixr, Iyr , Izr
+
+## Roda e armazena o model odo robô para M testes.
+matriz_resultados = []
 for i in tqdm(range(int(M)),desc="Processing Monte Carlo Method: "):
-    x1 = random.uniform(x1_min, x1_max)
-    x1_vet[i] = x1
-    x2 = random.triangular(x2_min, x2_max)
-    x2_vet[i] = x2
-    x3 = random.gauss(x3_avg, x3_sigma)
-    x3_vet[i] = x3
-    y_vet[i] = func(x1,x2,x3)
+    resultados = Robot_Model(variables)
+    matriz_resultados.append(resultados)
 
-matrix = [x1_vet,x2_vet,x3_vet,y_vet]
+# Salva os dados em um data frame
+df = pd.DataFrame(np.array(matriz_resultados), columns = ['M', 'L', 'H', 'W', 'Ixr', 'Iyr' , 'Izr'])
+df.to_csv('Resultados.csv')
 
-df = pd.DataFrame(np.array(matrix).T, columns = ['x1','x2','x3','y'])
-
-
-
+# Mostra os Resultados
 fig, ax = plt.subplots(1,4,tight_layout=True)
 
-ax[0].hist(df['x1'], range=[x1_min,x1_max],bins=1000)
-ax[1].hist(df['x2'], range=[x2_min,x2_max],bins=1000)
-ax[2].hist(df['x3'], range=[x3_avg -2*x3_sigma,x3_avg + 2*x3_sigma],bins=1000)
+ax[0].hist(df['M'],bins=bars)
+ax[0].set_title('Massa')
+ax[1].hist(df['L'],bins=bars)
+ax[1].set_title('L')
+ax[2].hist(df['H'],bins=bars)
+ax[2].set_title('H')
+ax[3].hist(df['W'],bins=bars)
+ax[3].set_title('W')
 
-ax[3].hist(df['y'], range=[df['y'].mean()-2*df['y'].std(),df['y'].mean()+2*df['y'].std()],bins=1000)
+
+
+fig2, ax2 = plt.subplots(1,3,tight_layout=True)
+
+ax2[0].hist(df['Ixr'],bins=bars)
+ax2[0].set_title('Ixr')
+
+ax2[1].hist(df['Iyr'],bins=bars)
+ax2[1].set_title('Iyr')
+
+ax2[2].hist(df['Izr'],bins=bars)
+ax2[2].set_title('Izr')
 
 plt.show()
 
